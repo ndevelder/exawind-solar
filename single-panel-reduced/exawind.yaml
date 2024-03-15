@@ -1,0 +1,24 @@
+# Example input file
+
+exawind:
+  amr_wind_inp: abl_ksgsm84_godunov.inp
+  num_timesteps: 432000
+  #num_timesteps: 72
+  nonlinear_iterations: 1
+
+  # Variables for overset exchange
+  nalu_vars:
+    - velocity
+    - turbulent_ke
+    - specific_dissipation_rate
+    - pressure
+    - temperature
+  amr_cell_vars:
+    - velocity
+    - tke
+    - sdr
+  amr_node_vars:
+    - p
+    - temperature
+  nalu_wind_inp:
+    - nalu-panel-1.yaml

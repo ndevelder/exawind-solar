@@ -1,0 +1,390 @@
+Simulations:
+- name: sim1
+  time_integrator: ti_1
+  optimizer: opt1
+
+linear_solvers:
+  # solver for the momentum
+  - name: solve_mom
+    type: hypre
+    method: hypre_gmres
+    preconditioner: boomerAMG
+    tolerance: 1e-6
+    max_iterations: 100
+    kspace: 20
+    segregated_solver: yes
+    write_matrix_files: no
+    #write_preassembly_matrix_files: yes
+    recompute_preconditioner_frequency: 1
+    reuse_linear_system: yes
+    simple_hypre_matrix_assemble: yes
+    dump_hypre_matrix_stats: no
+
+    bamg_max_levels: 1
+    bamg_relax_type: 12
+    bamg_num_sweeps: 2
+    bamg_cycle_type: 1
+    bamg_relax_order: 0
+
+    bamg_output_level: 0
+    bamg_debug: 0
+    output_level: 0
+
+  # solver for the scalars TKE, SDR
+  - name: solve_scalar
+    type: hypre
+    method: hypre_gmres
+    preconditioner: boomerAMG
+    tolerance: 1e-6
+    max_iterations: 100
+    kspace: 20
+    write_matrix_files: no
+    #write_preassembly_matrix_files: yes
+    recompute_preconditioner_frequency: 1
+    reuse_linear_system: yes
+    simple_hypre_matrix_assemble: yes
+    dump_hypre_matrix_stats: no
+
+    bamg_max_levels: 1
+    bamg_relax_type: 12
+    bamg_num_sweeps: 2
+    bamg_cycle_type: 1
+    bamg_relax_order: 0
+
+    bamg_output_level: 0
+    bamg_debug: 0
+    output_level: 0
+
+  # solver for the pressure
+  - name: solve_elliptic
+    type: hypre
+    method: hypre_gmres
+    preconditioner: boomerAMG
+    tolerance: 1e-6
+    max_iterations: 100
+    kspace: 40
+    write_matrix_files:  no
+    #write_preassembly_matrix_files: yes
+    recompute_preconditioner_frequency: 1
+    reuse_linear_system: yes
+    simple_hypre_matrix_assemble: yes
+    dump_hypre_matrix_stats: no
+
+    #bamg_max_levels: 7
+    bamg_coarsen_type: 8
+    bamg_interp_type: 6
+    bamg_relax_type: 11
+    bamg_cycle_type: 1
+    bamg_relax_order: 0
+    bamg_keep_transpose: 1
+
+    bamg_num_sweeps: 2
+    #bamg_num_down_sweeps: 2
+    #bamg_num_up_sweeps: 2
+    #bamg_num_coarse_sweeps: 1
+
+    bamg_strong_threshold: 0.3243198904981685
+    bamg_trunc_factor: 0.4227143073461007
+    bamg_pmax_elmts: 3
+
+    bamg_agg_num_levels: 1
+    bamg_agg_interp_type: 7
+    bamg_agg_pmax_elmts: 3
+
+    bamg_output_level: 0
+    bamg_debug: 0
+    output_level: 0
+
+  # solver for the wall
+  - name: solve_wall
+    type: hypre
+    method: hypre_gmres
+    preconditioner: boomerAMG
+    tolerance: 1e-6
+    max_iterations: 100
+    kspace: 40
+    write_matrix_files:  no
+    #write_preassembly_matrix_files: yes
+    recompute_preconditioner_frequency: 1
+    reuse_linear_system: yes
+    simple_hypre_matrix_assemble: yes
+    dump_hypre_matrix_stats: no
+
+    bamg_max_levels: 7
+    bamg_coarsen_type: 8
+    bamg_interp_type: 6
+    bamg_relax_type: 11
+    bamg_num_sweeps: 2
+    bamg_cycle_type: 1
+    bamg_relax_order: 0
+    bamg_trunc_factor: 0.1
+    bamg_agg_num_levels: 2
+    bamg_agg_interp_type: 5
+    bamg_agg_pmax_elmts: 3
+    bamg_pmax_elmts: 3
+    bamg_strong_threshold: 0.25
+
+    bamg_output_level: 0
+    bamg_debug: 0
+    output_level: 0
+
+  - name: solve_cont
+    type: hypre
+    method: hypre_gmres
+    preconditioner: boomerAMG
+    tolerance: 1e-6
+    max_iterations: 200
+    kspace: 75
+    output_level: 0
+    bamg_coarsen_type: 8
+    bamg_interp_type: 6
+    bamg_cycle_type: 1
+
+
+######################################################
+####                                              ####
+####                                              ####
+####                 Solar Row                    ####
+####                                              ####
+####                                              ####
+######################################################
+
+realms:
+  - name: solar
+    mesh: solar-row-600m-hyp-yp2-more.exo
+    use_edges: yes
+    automatic_decomposition_type: rcb
+    rebalance_mesh: yes
+    stk_rebalance_method: parmetis
+
+    equation_systems:
+      name: theEqSys
+      max_iterations: 5
+      decoupled_overset_solve: yes
+
+      solver_system_specification:
+        velocity: solve_mom
+        turbulent_ke: solve_scalar
+        specific_dissipation_rate: solve_scalar
+        pressure: solve_elliptic
+        ndtw: solve_wall
+        enthalpy: solve_scalar
+
+      systems:
+        - LowMachEOM:
+            name: myLowMach
+            max_iterations: 1
+            convergence_tolerance: 1.0e-8
+
+        - Enthalpy:
+            name: myEnth
+            max_iterations: 1
+            convergence_tolerance: 1.0e-8
+
+        - TurbKineticEnergy:
+            name: myTke
+            max_iterations: 1
+            convergence_tolerance: 1.0e-8
+
+        - ShearStressTransport:
+            name: mySST
+            max_iterations: 1
+            convergence_tolerance: 1.0e-8
+
+        - WallDistance:
+            name: myNDTW
+            max_iterations: 1
+            convergence_tolerance: 1.0e-8
+            update_frequency: 1000000000
+            exchange_fringe_data: false
+
+    initial_conditions:
+      - constant: ic_1
+        target_name:
+          - fluid-solar-HEX
+        value:
+          pressure: 0.0
+          velocity: [6, 0.0, 0.0]
+          temperature: 300.0
+          turbulent_ke: 0.31
+          specific_dissipation_rate: 200.0
+
+    material_properties:
+      target_name:
+        - fluid-solar-HEX
+
+      constant_specification:
+        universal_gas_constant: 8314.4621
+        reference_pressure: 101325.0
+        reference_temperature: 300.0
+
+      reference_quantities:
+        - species_name: Air
+          mw: 29.0
+          mass_fraction: 1.0
+
+      specifications:
+        - name: density
+          type: constant
+          value: 1.225
+
+        - name: viscosity
+          type: constant
+          value: 0.000018
+
+        - name: specific_heat
+          type: constant
+          value: 1000.0
+
+    boundary_conditions:
+      - wall_boundary_condition: bc_panel
+        target_name: solar-panel
+        wall_user_data:
+          use_wall_function: no
+          velocity: [0.0, 0.0, 0.0]
+          turbulent_ke: 0.0
+          temperature: 320.0
+          
+
+      - overset_boundary_condition: bc_overset_solar1
+        overset_connectivity_type: tioga
+        overset_user_data:
+          # This is important to ensure unique mesh tags for TIOGA
+          #mesh_tag_offset: 1
+          tioga_populate_inactive_part: false
+          mesh_group:
+            - overset_name: overset-solar-1
+              mesh_parts: [fluid-solar-HEX]
+              wall_parts: [solar-panel]
+              ovset_parts: [solar-overset]
+
+    mesh_transformation:
+      - name: solar-placement
+        mesh_parts:
+          - fluid-solar-HEX
+        frame: inertial
+        motion:
+          - type: translation
+            displacement: [0.0, 0.0, 7.0]
+
+    solution_options: &ovstsolopt
+      name: myOptions
+      projected_timescale_type: momentum_diag_inv #### Use 1/diagA formulation
+      turbulence_model: sst
+      #strelets_upwinding: yes
+      #interp_rhou_together_for_mdot: yes
+
+      options:
+        - laminar_prandtl:
+            enthalpy: 0.7
+
+        # Turbulent Prandtl number is 1/3 following Moeng (1984).
+        - turbulent_prandtl:
+            enthalpy: 0.3333
+
+        # SGS viscosity is divided by Schmidt number in the k SGS diffusion
+        # term.  In Moeng (1984), SGS viscosity is multiplied by 2, hence
+        # we divide by 1/2
+        - turbulent_schmidt:
+            turbulent_ke: 0.5
+
+        # The momentum source terms are a Boussinesq bouyancy term,
+        # Coriolis from Earth's rotation, and a source term to drive
+        # the planar-averaged wind at a certain height to a certain
+        # speed.
+        - source_terms:
+            continuity: density_time_derivative
+
+        - user_constants:
+            reference_density: 1.178037722969475
+            reference_temperature: 300.0
+            gravity: [0.0, 0.0, -9.81]
+            east_vector: [1.0, 0.0, 0.0]
+            north_vector: [0.0, 1.0, 0.0]
+            latitude: 45.0
+            earth_angular_velocity: 7.2921159e-5
+
+        - hybrid_factor:
+            velocity: 1.0
+            enthalpy: 1.0
+            turbulent_ke: 1.0
+            specific_dissipation_rate: 1.0
+
+        - upw_factor:
+            velocity: 1.0
+            enthalpy: 0.0
+            turbulent_ke: 0.0
+            specific_dissipation_rate: 0.0
+
+        - alpha_upw:
+            velocity: 1.0
+            enthalpy: 1.0
+            turbulent_ke: 1.0
+            specific_dissipation_rate: 1.0
+
+        - limiter:
+            pressure: no
+            velocity: yes
+            enthalpy: yes
+            turbulent_ke: yes
+            specific_dissipation_rate: yes
+
+        - noc_correction:
+            pressure: yes
+            enthalpy: yes
+
+        - projected_nodal_gradient:
+            pressure: element
+            velocity: element
+            enthalpy: element
+            turbulent_ke: element
+            specific_dissipation_rate: element
+            ndtw: element
+
+        - relaxation_factor:
+            velocity: 0.7
+            pressure: 0.3
+            turbulent_ke: 0.5
+            specific_dissipation_rate: 0.5
+            enthalpy: 0.5
+
+    restart:
+      restart_data_base_name: rst/solar-panel-1.rst
+      restart_frequency: 500
+      restart_start: 0
+      # restart_time: 540.0
+
+    output:
+      output_data_base_name: out/solar-panel-1.e
+      output_frequency: 10
+      output_node_set: no
+      output_variables:
+        - velocity
+        - pressure
+        - temperature
+        - turbulent_ke
+        - specific_dissipation_rate
+        - dpdx
+        - iblank
+        - iblank_cell
+
+######################################################
+####                                              ####
+####                                              ####
+####              Time Control                    ####
+####                                              ####
+####                                              ####
+######################################################
+
+Time_Integrators:
+  - StandardTimeIntegrator:
+      name: ti_1
+      start_time: 0
+      termination_step_count: 100000
+      time_step: 0.01
+      time_stepping_type: fixed
+      time_step_count: 0
+      second_order_accuracy: yes
+
+      realms:
+        - solar
